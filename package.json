@@ -1,0 +1,17 @@
+{
+  "name": "rose-discord-n8n-bot",
+  "version": "1.0.0",
+  "description": "Discord bot that forwards channel messages to an n8n webhook",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.11.0",
+    "dotenv": "^16.3.1",
+    "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=16.9.0"
+  }
+}
