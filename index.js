@@ -36,18 +36,24 @@ client.on('messageCreate', async message => {
       body: JSON.stringify(payload)
     });
 
-    const data = await response.text();
+    const text = await response.text();
 
-try {
-  const data = JSON.parse(text);
-  if (data.reply) {
-    await message.reply(data.reply);
-  } else {
-    await message.reply("🪻 Rose received the message, but didn’t send a reply.");
+    try {
+      const data = JSON.parse(text);
+      if (data.reply) {
+        await message.reply(data.reply);
+      } else {
+        await message.reply("🪻 Rose received the message, but didn’t send a reply.");
+      }
+    } catch (err) {
+      console.error("❌ Response was not valid JSON:", text);
+      await message.reply("⚠️ Rose received a response, but it wasn’t valid.");
+    }
+
+  } catch (error) {
+    console.error("❌ Error sending to n8n webhook:", error);
+    await message.reply("⚠️ Sorry, something went wrong connecting to Rose.");
   }
-} catch (err) {
-  console.error("❌ Response was not valid JSON:", text);
-  await message.reply("⚠️ Rose received a response, but it wasn’t valid.");
-}
+});
 
 client.login(token);
