@@ -1,11 +1,18 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import fetch from 'node-fetch';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const token = process.env.DISCORD_BOT_TOKEN;
 const webhookUrl = process.env.N8N_WEBHOOK_URL;
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ],
 });
 
 client.once('ready', () => {
@@ -15,11 +22,18 @@ client.once('ready', () => {
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
+  const payload = {
+    user: message.author.username,
+    content: message.content,
+    channel: message.channel.name || message.channel.id,
+    timestamp: new Date().toISOString()
+  };
+
   try {
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: message.content }),
+      body: JSON.stringify(payload)
     });
 
     const data = await response.json();
@@ -30,7 +44,7 @@ client.on('messageCreate', async message => {
       await message.reply("🪻 Rose received the message, but didn’t send a reply.");
     }
   } catch (error) {
-    console.error("Error sending to n8n webhook:", error);
+    console.error("❌ Error sending to n8n webhook:", error);
     await message.reply("⚠️ Sorry, something went wrong connecting to Rose.");
   }
 });
