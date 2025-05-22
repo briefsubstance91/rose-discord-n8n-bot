@@ -17,7 +17,6 @@ const client = new Client({
   ]
 });
 
-// In-memory storage of user thread IDs (upgrade to persistent DB later)
 const userThreads = {};
 
 client.once('ready', () => {
@@ -27,7 +26,7 @@ client.once('ready', () => {
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
 
-  console.log(`📨 Message from ${message.author.username}: ${message.content}`); // Debug line
+  console.log(`📨 Message from ${message.author.username}: ${message.content}`);
 
   const userId = message.author.id;
   const userMessage = message.content;
@@ -35,7 +34,6 @@ client.on('messageCreate', async message => {
   try {
     let threadId = userThreads[userId];
 
-    // 1. Create new thread if it doesn't exist
     if (!threadId) {
       const threadRes = await fetch('https://api.openai.com/v1/threads', {
         method: 'POST',
@@ -51,7 +49,6 @@ client.on('messageCreate', async message => {
       console.log(`🧵 Created thread for ${message.author.username}: ${threadId}`);
     }
 
-    // 2. Add user message to thread
     await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
       method: 'POST',
       headers: {
@@ -65,7 +62,6 @@ client.on('messageCreate', async message => {
       })
     });
 
-    // 3. Run the assistant
     const runRes = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
       method: 'POST',
       headers: {
@@ -77,9 +73,55 @@ client.on('messageCreate', async message => {
     });
     const runData = await runRes.json();
 
-    // 4. Poll for run status
     let runStatus = runData.status;
     let finalRun;
     while (runStatus !== 'completed' && runStatus !== 'failed') {
       await new Promise(resolve => setTimeout(resolve, 1500));
-      const checkRes = await fetch(`https://api.ope
+      const checkRes = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runData.id}`, {
+        headers: {
+          'Authorization': `Bearer ${openaiKey}`,
+          'OpenAI-Beta': 'assistants=v1'
+        }
+      });
+      finalRun = await checkRes.json();
+      runStatus = finalRun.status;
+    }
+
+    const messagesRes = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+      headers: {
+        'Authorization': `Bearer ${openaiKey}`,
+        'OpenAI-Beta': 'assistants=v1'
+      }
+    });
+
+    const messagesData = await messagesRes.json();
+    const assistantReply = messagesData.data.find(m => m.role === 'assistant');
+    const replyText = assistantReply?.content?.[0]?.text?.value;
+
+    if (replyText && /(@n8n|trigger|start workflow)/i.test(replyText)) {
+      await fetch(n8nWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user: message.author.username,
+          content: userMessage,
+          reply: replyText,
+          triggered_by: 'assistant'
+        })
+      });
+      console.log("📡 Triggered n8n webhook!");
+    }
+
+    if (replyText) {
+      await message.reply(replyText);
+    } else {
+      await message.reply("🪻 Rose didn’t send a response this time.");
+    }
+
+  } catch (error) {
+    console.error("❌ Error in assistant logic:", error);
+    await message.reply("⚠️ Something went wrong talking to Rose.");
+  }
+});
+
+client.login(token);
