@@ -1,4 +1,3 @@
-console.log(`📨 Message from ${message.author.username}: ${message.content}`);
 // index.js
 import { Client, GatewayIntentBits } from 'discord.js';
 import fetch from 'node-fetch';
@@ -27,6 +26,8 @@ client.once('ready', () => {
 
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
+
+  console.log(`📨 Message from ${message.author.username}: ${message.content}`); // Debug line
 
   const userId = message.author.id;
   const userMessage = message.content;
@@ -81,53 +82,4 @@ client.on('messageCreate', async message => {
     let finalRun;
     while (runStatus !== 'completed' && runStatus !== 'failed') {
       await new Promise(resolve => setTimeout(resolve, 1500));
-      const checkRes = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runData.id}`, {
-        headers: {
-          'Authorization': `Bearer ${openaiKey}`,
-          'OpenAI-Beta': 'assistants=v1'
-        }
-      });
-      finalRun = await checkRes.json();
-      runStatus = finalRun.status;
-    }
-
-    // 5. Get assistant's reply
-    const messagesRes = await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
-      headers: {
-        'Authorization': `Bearer ${openaiKey}`,
-        'OpenAI-Beta': 'assistants=v1'
-      }
-    });
-
-    const messagesData = await messagesRes.json();
-    const assistantReply = messagesData.data.find(m => m.role === 'assistant');
-    const replyText = assistantReply?.content?.[0]?.text?.value;
-
-    // 6. Check if response includes an n8n trigger
-    if (replyText && /(@n8n|trigger|start workflow)/i.test(replyText)) {
-      await fetch(n8nWebhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user: message.author.username,
-          content: userMessage,
-          reply: replyText,
-          triggered_by: 'assistant'
-        })
-      });
-      console.log("📡 Triggered n8n webhook!");
-    }
-
-    if (replyText) {
-      await message.reply(replyText);
-    } else {
-      await message.reply("🪻 Rose didn’t send a response this time.");
-    }
-
-  } catch (error) {
-    console.error("❌ Error in assistant logic:", error);
-    await message.reply("⚠️ Something went wrong talking to Rose.");
-  }
-});
-
-client.login(token);
+      const checkRes = await fetch(`https://api.ope
