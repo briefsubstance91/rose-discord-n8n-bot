@@ -1,3 +1,4 @@
+console.log(`📨 Message from ${message.author.username}: ${message.content}`);
 // index.js
 import { Client, GatewayIntentBits } from 'discord.js';
 import fetch from 'node-fetch';
